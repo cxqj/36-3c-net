@@ -13,13 +13,13 @@ class Dataset():
         self.path_to_annotations = self.dataset_name + '-Annotations/'
         self.features = np.load(self.path_to_features, encoding='bytes')
         self.segments = np.load(self.path_to_annotations + 'segments.npy')
-        self.gtlabels = np.load(self.path_to_annotations + 'labels.npy')
-        self.labels = np.load(self.path_to_annotations + 'labels_all.npy')     # Specific to Thumos14
+        self.gtlabels = np.load(self.path_to_annotations + 'labels.npy')   #每个动作实例的动作类别
+        self.labels = np.load(self.path_to_annotations + 'labels_all.npy')  # 整个视频的动作类别     # Specific to Thumos14
         self.activity_net = args.activity_net
         if not self.activity_net:
             self.classlist20 = np.load(self.path_to_annotations + '/classlist_20classes.npy')   
         self.classlist = np.load(self.path_to_annotations + 'classlist.npy')
-        self.subset = np.load(self.path_to_annotations + 'subset.npy')
+        self.subset = np.load(self.path_to_annotations + 'subset.npy')  # 412个视频每个视频的split
         self.duration = np.load(self.path_to_annotations + 'duration.npy')
         self.videoname = np.load(self.path_to_annotations + 'videoname.npy')
         self.lst_valid = None
@@ -45,15 +45,15 @@ class Dataset():
         self.t_max = args.max_seqlen
         self.trainidx = []
         self.testidx = []
-        self.classwiseidx = []
+        self.classwiseidx = [] 
         self.currenttestidx = 0
         self.currentvalidx = 0
-        self.labels_multihot = [utils.strlist2multihot(labs,self.classlist) for labs in self.labels]
+        self.labels_multihot = [utils.strlist2multihot(labs,self.classlist) for labs in self.labels] # 构造one_hot形式的label
         self.train_test_idx()
-        self.classwise_feature_mapping()
-        self.labels101to20 = None if self.activity_net else np.array(self.classes101to20())
+        self.classwise_feature_mapping()  # 若视频属于某一类，则将其idx添加到对应类别列表中
+        self.labels101to20 = None if self.activity_net else np.array(self.classes101to20()) # thumos14:[0,1,2,3,4,....19]
         self.class_order = self.get_class_id()
-        self.count_labels = self.get_count()
+        self.count_labels = self.get_count()  # 统计所有视频各个类别出现的次数
 
 
     def train_test_idx(self):
@@ -131,9 +131,9 @@ class Dataset():
         # Count number of instances of each category present in the video
         count = []
         num_class = len(self.class_order)
-        for i in range(len(self.gtlabels)):
-            gtl = self.gtlabels[i]
-            cnt = np.zeros(num_class)
+        for i in range(len(self.gtlabels)):  # 412
+            gtl = self.gtlabels[i]  # ['billiards','billiards','billiards']
+            cnt = np.zeros(num_class)   # [0,0,0,0,....,0]
             for j in gtl:
                 cnt[self.class_order[j]] += 1
             count.append(cnt)
