@@ -44,7 +44,7 @@ def COUNTINGLOSS(features, gt_count, seq_len, device):
         mask_pos = (gt_count[i]<int(seq_len[i])) * (gt_count[i]>0)
         # categories absent
         mask_neg = (mask_pos==0)
-        pred_count = (features[i,:seq_len[i]]).sum(0)
+        pred_count = (features[i,:seq_len[i]]).sum(0)  # [0.1147,0.3137,....-0.2102]
         pos_loss += ((pred_count[mask_pos] - Variable(gt_count[i][mask_pos],requires_grad=False)) * inv_gt_count[i][mask_pos]).abs().sum() # relative L1 
         neg_loss += 0.001* pred_count[mask_neg==1].abs().sum()
         num += 1
