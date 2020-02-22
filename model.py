@@ -31,10 +31,10 @@ class Model(torch.nn.Module):
             self.conv = nn.Conv1d(n_class, n_class, kernel_size=13, stride=1, padding=12, dilation=2, bias=False, groups=n_class)
         
         self.apply(weights_init)
-        # Params for multipliers of TCams for the 2 streams
+        # Params for multipliers of TCams for the 2 streams，可以认为这两个分配了每个分支选取的权重
         self.mul_r = nn.Parameter(data=torch.Tensor(n_class).float().fill_(1))
         self.mul_f = nn.Parameter(data=torch.Tensor(n_class).float().fill_(1))
-        self.dropout_f = nn.Dropout(0.7)
+        self.dropout_f = nn.Dropout(0.7)  # 0.7的概率是不是有点大
         self.dropout_r = nn.Dropout(0.7)
         self.relu = nn.ReLU(True)
         self.softmaxd1 = nn.Softmax(dim=1)
@@ -53,13 +53,13 @@ class Model(torch.nn.Module):
             x_f = self.dropout_f(x_f)
             x_r = self.dropout_r(x_r)
         
-        cls_x_f = self.classifier_f(x_f)
-        cls_x_r = self.classifier_r(x_r)
+        cls_x_f = self.classifier_f(x_f)  # (B,T,20)
+        cls_x_r = self.classifier_r(x_r)  # (B,T,20)
         
-        tcam = cls_x_r * self.mul_r + cls_x_f * self.mul_f
+        tcam = cls_x_r * self.mul_r + cls_x_f * self.mul_f  # 两个分支融合后的分类得分
         ### Add temporal conv for activity-net
         if self.n_class==100:  
-            tcam = self.relu(self.conv(tcam.permute([0,2,1]))).permute([0,2,1])
+            tcam = self.relu(self.conv(tcam.permute([0,2,1]))).permute([0,2,1])  # (B,T,20)
 
         if seq_len is not None:
             atn = torch.zeros(0).to(device)
@@ -69,7 +69,7 @@ class Model(torch.nn.Module):
                     atnb1 = self.softmaxd1(tcam[[b],:seq_len[b]])
                 else:
                     # attention over valid segments
-                    atnb1 = torch.cat([self.softmaxd1(tcam[[b],:seq_len[b]]), tcam[[b],seq_len[b]:]], dim=1)
+                    atnb1 = torch.cat([self.softmaxd1(tcam[[b],:seq_len[b]]), tcam[[b],seq_len[b]:]], dim=1) # (1,T,20)
                 atn = torch.cat([atn, atnb1], dim=0)
             # attention-weighted TCAM for count
             if self.labels20 is not None:
