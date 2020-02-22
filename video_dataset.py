@@ -53,7 +53,7 @@ class Dataset():
         self.classwise_feature_mapping()  # 若视频属于某一类，则将其idx添加到对应类别列表中
         self.labels101to20 = None if self.activity_net else np.array(self.classes101to20()) # thumos14:[0,1,2,3,4,....19]
         self.class_order = self.get_class_id()
-        self.count_labels = self.get_count()  # 统计所有视频各个类别出现的次数
+        self.count_labels = self.get_count()  # 统计所有视频各个类别出现的次数 (412,20)
 
 
     def train_test_idx(self):
