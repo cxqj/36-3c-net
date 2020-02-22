@@ -18,7 +18,7 @@ def CLSLOSS(logits, seq_len, batch_size, labels, device):
         return: torch tensor of dimension 0 (value) '''
 
     k = np.ceil(seq_len/8).astype('int32')
-    labels = labels / (torch.sum(labels, dim=1, keepdim=True) + 1e-10)
+    labels = labels / (torch.sum(labels, dim=1, keepdim=True) + 1e-10)  # 注意这一步对label取均值的操作
     lab = torch.zeros(0).to(device)
     instance_logits = torch.zeros(0).to(device)
     for i in range(batch_size):
@@ -62,32 +62,32 @@ def CENTERLOSS(features, logits, labels, seq_len, criterion, itr, device):
         criterion: center loss criterion, 
         return: torch tensor of dimension 0 (value) '''
 
-    lab = torch.zeros(0).to(device)
-    feat = torch.zeros(0).to(device)
+    lab = torch.zeros(0).to(device)  # []
+    feat = torch.zeros(0).to(device) # [],(B,1024)
     itr_th = 5000    
     for i in range(features.size(0)):
         if (labels[i] > 0).sum() == 0 or ((labels[i] > 0).sum() != 1 and itr < itr_th):
             continue
         # categories present in the video
-        labi = torch.arange(labels.size(1))[labels[i]>0]
-        atn = F.softmax(logits[i][:seq_len[i]], dim=0)
-        atni = atn[:,labi]
+        labi = torch.arange(labels.size(1))[labels[i]>0]  # [7]  # class idx
+        atn = F.softmax(logits[i][:seq_len[i]], dim=0)  # (T,20)
+        atni = atn[:,labi]  # (T,1)  
         # aggregate features category-wise
         for l in range(len(labi)):
             labl = labi[[l]].float()
-            atnl = atni[:,[l]]
-            atnl[atnl<atnl.mean()] = 0
+            atnl = atni[:,[l]]  # (T,1)
+            atnl[atnl<atnl.mean()] = 0  # (T,1)
             sum_atn = atnl.sum()
             if sum_atn > 0:
-                atnl = atnl.expand(seq_len[i],features.size(2))
+                atnl = atnl.expand(seq_len[i],features.size(2))  # (T,1024)
                 # attention-weighted feature aggregation
-                featl = torch.sum(features[i][:seq_len[i]]*atnl,dim=0,keepdim=True)/sum_atn
-                feat = torch.cat([feat, featl], dim=0)
+                featl = torch.sum(features[i][:seq_len[i]]*atnl,dim=0,keepdim=True)/sum_atn # (1,1024)
+                feat = torch.cat([feat, featl], dim=0)  
                 lab = torch.cat([lab, labl], dim=0)
         
     if feat.numel() > 0:
         # Compute loss
-        loss = criterion(feat, lab)
+        loss = criterion(feat, lab)  # (B,1024), (B) loss:4293.83
         return loss / feat.size(0)
     else:
         return 0
@@ -104,13 +104,14 @@ def train(itr, dataset, args, model, optimizer, criterion_cent_all, optimizer_ce
     centloss_itr, count_itr = 0, 0
 
     # Batch fprop
-    features, labels, count_labels = dataset.load_data()
-    seq_len = np.sum(np.max(np.abs(features), axis=2) > 0, axis=1)
-    features = features[:,:np.max(seq_len),:]
+    features, labels, count_labels = dataset.load_data()   # (2,750,2048), (2,20), (2,20)
+    seq_len = np.sum(np.max(np.abs(features), axis=2) > 0, axis=1) # [78,194] 有效的特征长度
+    features = features[:,:np.max(seq_len),:]  # (2,194,2048)
 
     features = torch.from_numpy(features).float().to(device)
     labels = torch.from_numpy(labels).float().to(device)
     count_labels = torch.from_numpy(count_labels).float().to(device)
+    # (B,T,1024),(B,T,20),(B,T,1024),(B,T,20),(B,T,20),(B,T,20) tcam为双流融合后的分类得分，count_feat为attention加权后的得分
     features_f, logits_f, features_r, logits_r, tcam, count_feat = model(Variable(features), device, seq_len=torch.from_numpy(seq_len).to(device))
     
     # Classification loss for two streams and final tcam
