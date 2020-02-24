@@ -20,7 +20,7 @@ class CenterLoss(nn.Module):
         if self.use_gpu:
             self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim).cuda())
         else:
-            self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim))
+            self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim))  # (20,1024)
 
     def forward(self, feature, labels):
         """
@@ -35,6 +35,7 @@ class CenterLoss(nn.Module):
         此时xx的shape为(m, 1)，经过expand()方法，扩展n-1次，此时xx的shape为(m, n)
         yy会在最后进行转置的操作
         """
+        # 计算矩阵feature和centers的欧式距离，只选取对应类别的distant值
         distmat = torch.pow(feature, 2).sum(dim=1, keepdim=True).expand(batch_size, self.num_classes) + \
                   torch.pow(self.centers, 2).sum(dim=1, keepdim=True).expand(self.num_classes, batch_size).t()  # (B,20)
         # torch.addmm(beta=1, input, alpha=1, mat1, mat2, out=None)，这行表示的意思是dist - 2 * x * yT,addmm_表示对原有数据进行修改
