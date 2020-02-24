@@ -38,14 +38,16 @@ def COUNTINGLOSS(features, gt_count, seq_len, device):
         return: torch tensor of dimension 0 (value) '''
 
     pos_loss, neg_loss, num = 0, 0, 0
-    inv_gt_count = (gt_count > 0).float() / (gt_count + 1e-10)
+    inv_gt_count = (gt_count > 0).float() / (gt_count + 1e-10)  # count愈大，权重越小
     for i in range(features.size(0)):
         # categories present in video
         mask_pos = (gt_count[i]<int(seq_len[i])) * (gt_count[i]>0)
         # categories absent
         mask_neg = (mask_pos==0)
-        pred_count = (features[i,:seq_len[i]]).sum(0)  # [0.1147,0.3137,....-0.2102]
-        pos_loss += ((pred_count[mask_pos] - Variable(gt_count[i][mask_pos],requires_grad=False)) * inv_gt_count[i][mask_pos]).abs().sum() # relative L1 
+        pred_count = (features[i,:seq_len[i]]).sum(0)  # [0.1147,0.3137,....-0.2102]  每个类别的预测count数
+        # 相对误差
+        pos_loss += ((pred_count[mask_pos] - Variable(gt_count[i][mask_pos],requires_grad=False)) * inv_gt_count[i][mask_pos]).abs().sum() # relative L1
+        # 绝对误差
         neg_loss += 0.001* pred_count[mask_neg==1].abs().sum()
         num += 1
     if num > 0:
@@ -123,7 +125,7 @@ def train(itr, dataset, args, model, optimizer, criterion_cent_all, optimizer_ce
 
     # Add center loss of both streams
     if itr > centloss_itr:
-        centloss_f = CENTERLOSS(features_f, logits_f, labels, seq_len, criterion_cent_f, itr, device) * centerloss_alpha
+        centloss_f = CENTERLOSS(features_f, logits_f, labels, seq_len, criterion_cent_f, itr, device) * centerloss_alpha # 0.001
         optimizer_centloss_f.zero_grad()
         centloss_r = CENTERLOSS(features_r, logits_r, labels, seq_len, criterion_cent_r, itr, device) * centerloss_alpha
         optimizer_centloss_r.zero_grad()
@@ -131,8 +133,8 @@ def train(itr, dataset, args, model, optimizer, criterion_cent_all, optimizer_ce
         total_loss += centloss
 
     # Add counting loss every alternate batch
-    if (itr % 2 == 0) and itr > count_itr:
-        countloss = COUNTINGLOSS(count_feat, count_labels, seq_len, device) * countloss_mult
+    if (itr % 2 == 0) and itr > count_itr:   # 每迭代两次计算一次countloss
+        countloss = COUNTINGLOSS(count_feat, count_labels, seq_len, device) * countloss_mult # 0.1  count_feat为注意力加权后的分类得分
         if countloss.item() > 0:
             total_loss += countloss 
 
@@ -142,11 +144,13 @@ def train(itr, dataset, args, model, optimizer, criterion_cent_all, optimizer_ce
     optimizer.zero_grad()
     if total_loss > 0:
         total_loss.backward()
+        
+        
     # Update centers
     if itr > centloss_itr:
         for param in criterion_cent_f.parameters():
             if param.grad is not None:
-                param.grad.data *= (1./centerloss_alpha)
+                param.grad.data *= (1./centerloss_alpha)  # 0.001
         optimizer_centloss_f.step()
         for param in criterion_cent_r.parameters():
             if param.grad is not None:
