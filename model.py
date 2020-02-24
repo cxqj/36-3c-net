@@ -61,6 +61,7 @@ class Model(torch.nn.Module):
         if self.n_class==100:  
             tcam = self.relu(self.conv(tcam.permute([0,2,1]))).permute([0,2,1])  # (B,T,20)
 
+        # compute the attention,over time t, for a category j
         if seq_len is not None:
             atn = torch.zeros(0).to(device)
             mx_len = seq_len.max()
