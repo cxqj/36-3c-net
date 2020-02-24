@@ -63,15 +63,15 @@ def CENTERLOSS(features, logits, labels, seq_len, criterion, itr, device):
         return: torch tensor of dimension 0 (value) '''
 
     lab = torch.zeros(0).to(device)  # []
-    feat = torch.zeros(0).to(device) # [],(B,1024)
+    feat = torch.zeros(0).to(device) # []
     itr_th = 5000    
     for i in range(features.size(0)):
-        if (labels[i] > 0).sum() == 0 or ((labels[i] > 0).sum() != 1 and itr < itr_th):
+        if (labels[i] > 0).sum() == 0 or ((labels[i] > 0).sum() != 1 and itr < itr_th):  # 前5000次迭代只计算类别数为1的视频
             continue
         # categories present in the video
         labi = torch.arange(labels.size(1))[labels[i]>0]  # [7]  # class idx
-        atn = F.softmax(logits[i][:seq_len[i]], dim=0)  # (T,20)
-        atni = atn[:,labi]  # (T,1)  
+        atn = F.softmax(logits[i][:seq_len[i]], dim=0)  # (T,20) 沿时间轴计算attention
+        atni = atn[:,labi]  # (T,1)  挑选该类的attention
         # aggregate features category-wise
         for l in range(len(labi)):
             labl = labi[[l]].float()
@@ -85,7 +85,7 @@ def CENTERLOSS(features, logits, labels, seq_len, criterion, itr, device):
                 feat = torch.cat([feat, featl], dim=0)  
                 lab = torch.cat([lab, labl], dim=0)
         
-    if feat.numel() > 0:
+    if feat.numel() > 0:  # feat: (B,1024) lab: [15]
         # Compute loss
         loss = criterion(feat, lab)  # (B,1024), (B) loss:4293.83
         return loss / feat.size(0)
