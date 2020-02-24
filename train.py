@@ -66,26 +66,27 @@ def CENTERLOSS(features, logits, labels, seq_len, criterion, itr, device):
 
     lab = torch.zeros(0).to(device)  # []
     feat = torch.zeros(0).to(device) # []
-    itr_th = 5000    
+    itr_th = 5000 
     for i in range(features.size(0)):
         if (labels[i] > 0).sum() == 0 or ((labels[i] > 0).sum() != 1 and itr < itr_th):  # 前5000次迭代只计算类别数为1的视频
             continue
         # categories present in the video
         labi = torch.arange(labels.size(1))[labels[i]>0]  # [7]  # class idx
-        atn = F.softmax(logits[i][:seq_len[i]], dim=0)  # (T,20) 沿时间轴计算attention
+        # 沿着时间轴计算attention
+        atn = F.softmax(logits[i][:seq_len[i]], dim=0)  # (T,20) 
         atni = atn[:,labi]  # (T,1)  挑选该类的attention
         # aggregate features category-wise
         for l in range(len(labi)):
             labl = labi[[l]].float()
-            atnl = atni[:,[l]]  # (T,1)
-            atnl[atnl<atnl.mean()] = 0  # (T,1)
+            atnl = atni[:,[l]]  # (T,1) 只选取与该类对应的attention
+            atnl[atnl<atnl.mean()] = 0  # (T,1)  将低于阈值的地方置为0，从视频的特定类别的高关注区域进行特征聚合。
             sum_atn = atnl.sum()
             if sum_atn > 0:
                 atnl = atnl.expand(seq_len[i],features.size(2))  # (T,1024)
                 # attention-weighted feature aggregation
                 featl = torch.sum(features[i][:seq_len[i]]*atnl,dim=0,keepdim=True)/sum_atn # (1,1024)
-                feat = torch.cat([feat, featl], dim=0)  
-                lab = torch.cat([lab, labl], dim=0)
+                feat = torch.cat([feat, featl], dim=0)   # 参与计算centerLoss的特征 
+                lab = torch.cat([lab, labl], dim=0)      # 类别
         
     if feat.numel() > 0:  # feat: (B,1024) lab: [15]
         # Compute loss
