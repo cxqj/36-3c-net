@@ -17,6 +17,7 @@ class CenterLoss(nn.Module):
         self.feat_dim = feat_dim
         self.use_gpu = use_gpu
 
+        # 先随机初始化特征中心，再训练更新
         if self.use_gpu:
             self.centers = nn.Parameter(torch.randn(self.num_classes, self.feat_dim).cuda())
         else:
