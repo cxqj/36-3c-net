@@ -159,7 +159,7 @@ def getLocMAP(predictions, th, annotation_path, activity_net, valid_id):
 
       # Compare predictions and gt
       tp, fp = [], []
-      for i in range(len(segment_predict)):
+      for i in range(len(segment_predict)):  # 计算每一个预测结果和所有gt的交并比，如果大于某个阈值，则认为该预测结果是正样本
          flag = 0.
          best_iou = 0
          for j in range(len(segment_gt)):
