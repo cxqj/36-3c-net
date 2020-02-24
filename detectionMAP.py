@@ -45,6 +45,7 @@ def getLocMAP(predictions, th, annotation_path, activity_net, valid_id):
    subset = np.load(annotation_path + '/subset.npy'); subset = np.array([s.decode('utf-8') for s in subset])
    classlist = np.load(annotation_path + '/classlist.npy'); classlist = np.array([c.decode('utf-8') for c in classlist])
 
+   # 忽略的视频及其seg标注
    if not activity_net:
       ambilist = annotation_path + '/Ambiguous_test.txt'
       ambilist = list(open(ambilist,'r'))
@@ -57,7 +58,7 @@ def getLocMAP(predictions, th, annotation_path, activity_net, valid_id):
 
 
    # keep training gtlabels for plotting
-   gtltr = []
+   gtltr = []  # 保存每个训练视频的每个动作实例的labels
    train_str = 'validation' if not activity_net else 'training'
    for i,s in enumerate(subset):
       if subset[i]==train_str and len(gtsegments[i]):
@@ -100,16 +101,16 @@ def getLocMAP(predictions, th, annotation_path, activity_net, valid_id):
       templabelidx = [i for i in range(20)]
              
    
-   predictions_mod = []
-   c_score = []
+   predictions_mod = []  # (212,T,C)只保留有效类别的预测得分结果
+   c_score = []  # (212,20) , one_hot的形式，平局得分
    for i in range(len(predictions)):
-      pr = predictions[i]
+      pr = predictions[i]  # (T,C)
       prp = - pr; [prp[:,i].sort() for i in range(np.shape(prp)[1])]; prp=-prp
       end_id = int(np.shape(prp)[0]/8)
       if end_id == 0:
          end_id = 1
-      c_s = np.mean(prp[:end_id,:],axis=0)
-      ind = c_s > 0 if activity_net else (c_s > np.max(c_s)/2)* (c_s > 0)
+      c_s = np.mean(prp[:end_id,:],axis=0)  # (1,20)
+      ind = c_s > 0 if activity_net else (c_s > np.max(c_s)/2)* (c_s > 0)  # 获取有效的类别idx
       c_score.append(c_s)
       predictions_mod.append(pr*ind)
    predictions = predictions_mod
@@ -123,11 +124,11 @@ def getLocMAP(predictions, th, annotation_path, activity_net, valid_id):
 
    ap = []
    gtseg_c = -1
-   for c in templabelidx:
+   for c in templabelidx:  # 计算每个类别的AP
       gtseg_c += 1
       segment_predict = []
       # Get list of all predictions for class c
-      for i in range(len(predictions)):
+      for i in range(len(predictions)):  # 遍历所有的视频
          tmp = predictions[i][:,c]
          threshold = np.max(tmp) - (np.max(tmp) - np.min(tmp))*0.5  if not activity_net else 0
          vid_pred = np.concatenate([np.zeros(1),(tmp>threshold).astype('float32'),np.zeros(1)], axis=0)
@@ -143,6 +144,7 @@ def getLocMAP(predictions, th, annotation_path, activity_net, valid_id):
                segment_predict.append([i, s[j], e[j], aggr_score])
                detection_results[i].append([classlist[c], s[j], e[j], aggr_score])
       segment_predict = np.array(segment_predict)
+      # 过滤掉和ambiist有交集的预测结果
       if not activity_net:
          segment_predict = filter_segments(segment_predict, videoname, ambilist)
    
@@ -161,8 +163,9 @@ def getLocMAP(predictions, th, annotation_path, activity_net, valid_id):
          flag = 0.
          best_iou = 0
          for j in range(len(segment_gt)):
-            if segment_predict[i][0]==segment_gt[j][0]:
-               gt = range(int(round(segment_gt[j][1]*25/16)), int(round(segment_gt[j][2]*25/16)))
+            if segment_predict[i][0]==segment_gt[j][0]:  # 相同video
+               # 16是因为视频特征的一个点的感受野是原来的16帧
+               gt = range(int(round(segment_gt[j][1]*25/16)), int(round(segment_gt[j][2]*25/16)))  
                p = range(int(segment_predict[i][1]),int(segment_predict[i][2]))
                IoU = float(len(set(gt).intersection(set(p))))/float(len(set(gt).union(set(p))))
                # remove gt segment if IoU is greater than threshold (since predicted segments are sorted according to their 'actioness' scores)
@@ -196,6 +199,7 @@ def getDetectionMAP(predictions, annotation_path, activity_net=False, valid_id=N
 
    for iou in iou_list:
       print('Testing for IoU %f' %iou)
+      # predictions: (212,T,20), valid_id: 测试视频名
       dmap_list.append(getLocMAP(predictions, iou, annotation_path, activity_net, valid_id))
 
    return dmap_list, iou_list
