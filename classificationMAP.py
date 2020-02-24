@@ -11,7 +11,7 @@ def getAP(conf,labels): # (1,20),(1,20)
     prec=tp/(fp+tp)
     tmp = (labels[sortind]==1).astype('float32')
 
-    return np.sum(tmp*prec)/npos  # 为啥除以npos
+    return np.sum(tmp*prec)/npos  # 除以npos得到prec的均值
 
 def getClassificationMAP(confidence,labels):  # (212,20), (212,20)
     ''' confidence and labels are of dimension n_samples x n_label '''
