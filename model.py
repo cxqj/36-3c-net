@@ -6,7 +6,7 @@ import torch.nn.init as torch_init
 torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 def weights_init(m):
-    classname = m.__class__.__name__
+    classname = m.__class__.__name__  # 调用__class__后指向该实例对应的类，__name__为类属性
     if classname.find('Conv') != -1 or classname.find('Linear') != -1:
         torch_init.xavier_uniform_(m.weight)
         if m.bias is not None:
@@ -18,21 +18,21 @@ class Model(torch.nn.Module):
         super(Model, self).__init__()
         self.labels20 = labels101to20
         self.n_class = n_class
-        n_featureby2 = int(n_feature/2)
+        n_featureby2 = int(n_feature/2)  # 1024
         # FC layers for the 2 streams
-        self.fc_f = nn.Linear(n_featureby2, n_featureby2)
-        self.fc1_f = nn.Linear(n_featureby2, n_featureby2)
-        self.fc_r = nn.Linear(n_featureby2, n_featureby2)
-        self.fc1_r = nn.Linear(n_featureby2, n_featureby2)
-        self.classifier_f = nn.Linear(n_featureby2, n_class)
-        self.classifier_r = nn.Linear(n_featureby2, n_class)
+        self.fc_f = nn.Linear(n_featureby2, n_featureby2)  # 1024-->1024
+        self.fc1_f = nn.Linear(n_featureby2, n_featureby2) 
+        self.fc_r = nn.Linear(n_featureby2, n_featureby2)  
+        self.fc1_r = nn.Linear(n_featureby2, n_featureby2)  
+        self.classifier_f = nn.Linear(n_featureby2, n_class) # 1024-->20
+        self.classifier_r = nn.Linear(n_featureby2, n_class) # 1024-->20
         if n_class == 100:
             # temporal conv for activitynet
             self.conv = nn.Conv1d(n_class, n_class, kernel_size=13, stride=1, padding=12, dilation=2, bias=False, groups=n_class)
         
         self.apply(weights_init)
         # Params for multipliers of TCams for the 2 streams，可以认为这两个分配了每个分支选取的权重
-        self.mul_r = nn.Parameter(data=torch.Tensor(n_class).float().fill_(1))
+        self.mul_r = nn.Parameter(data=torch.Tensor(n_class).float().fill_(1))  # 分配每个类的权重
         self.mul_f = nn.Parameter(data=torch.Tensor(n_class).float().fill_(1))
         self.dropout_f = nn.Dropout(0.7)  # 0.7的概率是不是有点大
         self.dropout_r = nn.Dropout(0.7)
