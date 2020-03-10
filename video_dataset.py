@@ -8,13 +8,13 @@ class Dataset():
     def __init__(self, args):
         self.dataset_name = args.dataset_name
         self.num_class = args.num_class
-        self.feature_size = args.feature_size
+        self.feature_size = args.feature_size  # 2048
         self.path_to_features = self.dataset_name + '-I3D-JOINTFeatures.npy'
         self.path_to_annotations = self.dataset_name + '-Annotations/'
         self.features = np.load(self.path_to_features, encoding='bytes')
         self.segments = np.load(self.path_to_annotations + 'segments.npy')
         self.gtlabels = np.load(self.path_to_annotations + 'labels.npy')   #每个动作实例的动作类别
-        self.labels = np.load(self.path_to_annotations + 'labels_all.npy')  # 整个视频的动作类别     # Specific to Thumos14
+        self.labels = np.load(self.path_to_annotations + 'labels_all.npy')  # 视频的动作类别     # Specific to Thumos14
         self.activity_net = args.activity_net
         if not self.activity_net:
             self.classlist20 = np.load(self.path_to_annotations + '/classlist_20classes.npy')   
@@ -42,20 +42,20 @@ class Dataset():
                 self.segments = self.segments[lst_valid]
 
         self.batch_size = args.batch_size
-        self.t_max = args.max_seqlen
+        self.t_max = args.max_seqlen  # 750
         self.trainidx = []
         self.testidx = []
-        self.classwiseidx = [] 
+        self.classwiseidx = [] # 每个类对应的视频idx
         self.currenttestidx = 0
         self.currentvalidx = 0
         self.labels_multihot = [utils.strlist2multihot(labs,self.classlist) for labs in self.labels] # 构造one_hot形式的label
         self.train_test_idx()
         self.classwise_feature_mapping()  # 若视频属于某一类，则将其idx添加到对应类别列表中
         self.labels101to20 = None if self.activity_net else np.array(self.classes101to20()) # thumos14:[0,1,2,3,4,....19]
-        self.class_order = self.get_class_id()
+        self.class_order = self.get_class_id()   #视频类别及其对应的idx
         self.count_labels = self.get_count()  # 统计所有视频各个类别出现的次数 (412,20)
 
-
+     # 将视频对应的idx添加到对应的列表中
     def train_test_idx(self):
 
         train_str = 'validation' if not self.activity_net else 'training'    # Thumos and ActivityNet training set
@@ -64,7 +64,7 @@ class Dataset():
                 self.trainidx.append(i)
             else:
                 self.testidx.append(i)
-
+    # 将视频idx添加到对应的类比列表中
     def classwise_feature_mapping(self):
 
         for category in self.classlist:
@@ -117,7 +117,7 @@ class Dataset():
         
         return labelsidx
 
-
+    # 获取视频类别对应的idx字典
     def get_class_id(self):
         # Dict of class names and their indices
         d = dict()
@@ -126,7 +126,7 @@ class Dataset():
             d[k.decode('utf-8')] = i
         return d
 
-
+    # 统计某视频中某个动作类别提议出现的次数
     def get_count(self):
         # Count number of instances of each category present in the video
         count = []
