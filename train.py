@@ -57,34 +57,34 @@ def COUNTINGLOSS(features, gt_count, seq_len, device):
 
 
 def CENTERLOSS(features, logits, labels, seq_len, criterion, itr, device):
-    ''' features: torch tensor dimension (B, n_element, feature_size),
-        logits: torch tensor of dimension (B, n_element, n_class),
-        labels: torch tensor of dimension (B, n_class) of 1 or 0,
+    ''' features: torch tensor dimension  (B, T, 1024),
+        logits: torch tensor of dimension (B, T, 20),
+        labels: torch tensor of dimension (B, 20) of 1 or 0,
         seq_len: numpy array of dimension (B,) indicating the length of each video in the batch, 
         criterion: center loss criterion, 
         return: torch tensor of dimension 0 (value) '''
 
-    lab = torch.zeros(0).to(device)  # []
-    feat = torch.zeros(0).to(device) # []
+    lab = torch.zeros(0).to(device)  # [15]  视频动作的类别索引
+    feat = torch.zeros(0).to(device) # [(1,1024),(1,1024),...(1,1024)]-->(B,1024)  加权后的视频特征包含了所有时序的信息
     itr_th = 5000 
     for i in range(features.size(0)):
         if (labels[i] > 0).sum() == 0 or ((labels[i] > 0).sum() != 1 and itr < itr_th):  # 前5000次迭代只计算类别数为1的视频
             continue
         # categories present in the video
-        labi = torch.arange(labels.size(1))[labels[i]>0]  # [7]  # class idx
+        labi = torch.arange(labels.size(1))[labels[i]>0]  # [7]  # 类别的索引
         # 沿着时间轴计算attention
         atn = F.softmax(logits[i][:seq_len[i]], dim=0)  # (T,20) 
         atni = atn[:,labi]  # (T,1)  挑选该类的attention
         # aggregate features category-wise
         for l in range(len(labi)):
-            labl = labi[[l]].float()
+            labl = labi[[l]].float()  # 有效的类别索引
             atnl = atni[:,[l]]  # (T,1) 只选取与该类对应的attention
             atnl[atnl<atnl.mean()] = 0  # (T,1)  将低于阈值的地方置为0，从视频的特定类别的高关注区域进行特征聚合。
             sum_atn = atnl.sum()
             if sum_atn > 0:
                 atnl = atnl.expand(seq_len[i],features.size(2))  # (T,1024)
                 # attention-weighted feature aggregation
-                featl = torch.sum(features[i][:seq_len[i]]*atnl,dim=0,keepdim=True)/sum_atn # (1,1024)
+                featl = torch.sum(features[i][:seq_len[i]]*atnl,dim=0,keepdim=True)/sum_atn # (1,1024)经过attention聚合后的特征，包含了所有时序位置的信息
                 feat = torch.cat([feat, featl], dim=0)   # 参与计算centerLoss的特征 
                 lab = torch.cat([lab, labl], dim=0)      # 类别
         
@@ -103,7 +103,7 @@ def train(itr, dataset, args, model, optimizer, criterion_cent_all, optimizer_ce
     optimizer_centloss_f = optimizer_centloss_all[0] 
     optimizer_centloss_r = optimizer_centloss_all[1] 
     countloss_mult = 0.1 if args.activity_net else 1
-    countloss, centerloss_alpha = torch.zeros(1), 0.001
+    countloss, centerloss_alpha = torch.zeros(1), 0.001  # center loss计算出来会非常大因此乘以0.001
     centloss_itr, count_itr = 0, 0
 
     # Batch fprop
@@ -114,13 +114,14 @@ def train(itr, dataset, args, model, optimizer, criterion_cent_all, optimizer_ce
     features = torch.from_numpy(features).float().to(device)
     labels = torch.from_numpy(labels).float().to(device)
     count_labels = torch.from_numpy(count_labels).float().to(device)
+    
     # (B,T,1024),(B,T,20),(B,T,1024),(B,T,20),(B,T,20),(B,T,20) tcam为双流融合后的分类得分，count_feat为attention加权后的得分
     features_f, logits_f, features_r, logits_r, tcam, count_feat = model(Variable(features), device, seq_len=torch.from_numpy(seq_len).to(device))
     
     # Classification loss for two streams and final tcam
-    clsloss_f = CLSLOSS(logits_f, seq_len, args.batch_size, labels, device)
-    clsloss_r = CLSLOSS(logits_r, seq_len, args.batch_size, labels, device)
-    clsloss_final = CLSLOSS(tcam, seq_len, args.batch_size, labels, device)
+    clsloss_f = CLSLOSS(logits_f, seq_len, args.batch_size, labels, device)  # logits_f : (B,T,20)  labels: (B,20)
+    clsloss_r = CLSLOSS(logits_r, seq_len, args.batch_size, labels, device)  # logits_r : (B,T,20)  labels: (B,20)  
+    clsloss_final = CLSLOSS(tcam, seq_len, args.batch_size, labels, device)  # tcam : (B,T,20)  labels: (B,20)
     clsloss = clsloss_f + clsloss_r + clsloss_final
     total_loss = clsloss
 
