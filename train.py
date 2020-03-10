@@ -55,7 +55,7 @@ def COUNTINGLOSS(features, gt_count, seq_len, device):
     else:
         return torch.zeros(1).to(device)
 
-
+#attention机制可以认为是扩大不同时间维度特征的差异
 def CENTERLOSS(features, logits, labels, seq_len, criterion, itr, device):
     ''' features: torch tensor dimension  (B, T, 1024),
         logits: torch tensor of dimension (B, T, 20),
