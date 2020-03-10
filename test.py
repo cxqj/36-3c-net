@@ -41,8 +41,8 @@ def test(itr, dataset, args, model, logger, device):
         tcam_stack.append(tcam)
         labels_stack.append(labels)
         
-    instance_logits_stack = np.array(instance_logits_stack)
-    labels_stack = np.array(labels_stack)
+    instance_logits_stack = np.array(instance_logits_stack)   #(video_num,20)
+    labels_stack = np.array(labels_stack)  # (video_num,20)
 
     if args.dataset_name.find('Thumos14')!= -1 and args.num_class == 101:
         test_set = sio.loadmat('test_set_meta.mat')['test_videos'][0]
@@ -54,6 +54,7 @@ def test(itr, dataset, args, model, logger, device):
 
     cmap = cmAP(instance_logits_stack, labels_stack)
     print(cmap)
+    # tcam_stack : (video_num,T,20),  dataset.path_to_annotations: GT 标注 , None, None 
     dmap, iou = dmAP(tcam_stack, dataset.path_to_annotations, args.activity_net, valid_id=dataset.lst_valid)
     
     print('Classification map %f' %cmap)
