@@ -42,10 +42,10 @@ if __name__ == '__main__':
         model.load_state_dict(torch.load(args.pretrained_ckpt))
 
     best_acc = 0
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=0.0005)  
-    criterion_cent_f = CenterLoss(num_classes=dataset.num_class, feat_dim=1024, use_gpu=True)
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=0.0005)   # 分类和count loss的优化器
+    criterion_cent_f = CenterLoss(num_classes=dataset.num_class, feat_dim=1024, use_gpu=True)  # 计算中心loss
     optimizer_centloss_f = torch.optim.SGD(criterion_cent_f.parameters(), lr=0.1)
-    criterion_cent_r = CenterLoss(num_classes=dataset.num_class, feat_dim=1024, use_gpu=True)
+    criterion_cent_r = CenterLoss(num_classes=dataset.num_class, feat_dim=1024, use_gpu=True)  # 计算中心loss
     optimizer_centloss_r = torch.optim.SGD(criterion_cent_r.parameters(), lr=0.1)
 
     criterion_cent_all=[criterion_cent_f, criterion_cent_r]
