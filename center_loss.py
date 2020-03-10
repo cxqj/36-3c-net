@@ -61,3 +61,4 @@ class CenterLoss(nn.Module):
         loss = dist.mean()
 
         return loss
+    
