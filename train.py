@@ -12,9 +12,9 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
 
 
 def CLSLOSS(logits, seq_len, batch_size, labels, device):
-    ''' logits: torch tensor of dimension (B, n_element, n_class),
+    ''' logits: torch tensor of dimension (B, T, 20),
         seq_len: numpy array of dimension (B,) indicating the length of each video in the batch, 
-        labels: torch tensor of dimension (B, n_class) of 1 or 0
+        labels: torch tensor of dimension (B, 20) of 1 or 0
         return: torch tensor of dimension 0 (value) '''
 
     k = np.ceil(seq_len/8).astype('int32')
@@ -32,14 +32,14 @@ def CLSLOSS(logits, seq_len, batch_size, labels, device):
 
 
 def COUNTINGLOSS(features, gt_count, seq_len, device):
-    ''' features: torch tensor dimension (B, n_element, n_class),
-        gt_count: torch tensor dimension (B, n_class) of integer value,
+    ''' features: torch tensor dimension  (B, T, 20),
+        gt_count: torch tensor dimension  (B, 20) of integer value,
         seq_len: numpy array of dimension (B,) indicating the length of each video in the batch, 
         return: torch tensor of dimension 0 (value) '''
 
     pos_loss, neg_loss, num = 0, 0, 0
     inv_gt_count = (gt_count > 0).float() / (gt_count + 1e-10)  # count愈大，权重越小
-    for i in range(features.size(0)):
+    for i in range(features.size(0)):  # B
         # categories present in video
         mask_pos = (gt_count[i]<int(seq_len[i])) * (gt_count[i]>0)
         # categories absent
@@ -136,7 +136,7 @@ def train(itr, dataset, args, model, optimizer, criterion_cent_all, optimizer_ce
 
     # Add counting loss every alternate batch
     if (itr % 2 == 0) and itr > count_itr:   # 每迭代两次计算一次countloss
-        countloss = COUNTINGLOSS(count_feat, count_labels, seq_len, device) * countloss_mult # 0.1  count_feat为注意力加权后的分类得分
+        countloss = COUNTINGLOSS(count_feat, count_labels, seq_len, device) * countloss_mult # 0.1  count_feat为注意力加权后的分类结果
         if countloss.item() > 0:
             total_loss += countloss 
 
