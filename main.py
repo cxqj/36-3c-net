@@ -42,6 +42,7 @@ if __name__ == '__main__':
         model.load_state_dict(torch.load(args.pretrained_ckpt))
 
     best_acc = 0
+    # 值得注意的是center_loss的训练和全连接层的训练方式不一样
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=0.0005)   # 分类和count loss的优化器
     criterion_cent_f = CenterLoss(num_classes=dataset.num_class, feat_dim=1024, use_gpu=True)  # 计算中心loss
     optimizer_centloss_f = torch.optim.SGD(criterion_cent_f.parameters(), lr=0.1)
@@ -53,8 +54,8 @@ if __name__ == '__main__':
 
     for itr in range(args.max_iter):
         dataset.t_max = t_max
-        if itr % 2 == 0 and itr > 000:
-            dataset.t_max = t_max_ctc
+        if itr % 2 == 0 and itr > 000:  
+            dataset.t_max = t_max_ctc  #也就是让200和400特征长度的能进行交替训练
         if not args.eval_only:
             train(itr, dataset, args, model, optimizer, criterion_cent_all, optimizer_centloss_all, logger, device)
           
