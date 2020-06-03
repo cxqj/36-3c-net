@@ -32,7 +32,7 @@ class Model(torch.nn.Module):
         
         self.apply(weights_init)
         # Params for multipliers of TCams for the 2 streams，可以认为这两个分配了每个分支选取的权重
-        self.mul_r = nn.Parameter(data=torch.Tensor(n_class).float().fill_(1))  
+        self.mul_r = nn.Parameter(data=torch.Tensor(n_class).float().fill_(1)) #[100]  
         self.mul_f = nn.Parameter(data=torch.Tensor(n_class).float().fill_(1))
         self.dropout_f = nn.Dropout(0.7)  # 0.7的概率是不是有点大
         self.dropout_r = nn.Dropout(0.7)
