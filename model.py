@@ -31,7 +31,7 @@ class Model(torch.nn.Module):
             self.conv = nn.Conv1d(n_class, n_class, kernel_size=13, stride=1, padding=12, dilation=2, bias=False, groups=n_class)
         
         self.apply(weights_init)
-        # Params for multipliers of TCams for the 2 streams，可以认为这两个分配了每个分支选取的权重
+        # Params for multipliers of TCams for the 2 streams，可以认为这两个分配了每个分支选取的权重，每一个类别的权重
         self.mul_r = nn.Parameter(data=torch.Tensor(n_class).float().fill_(1)) #[100]  
         self.mul_f = nn.Parameter(data=torch.Tensor(n_class).float().fill_(1))
         self.dropout_f = nn.Dropout(0.7)  # 0.7的概率是不是有点大
