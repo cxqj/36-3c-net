@@ -143,6 +143,7 @@ def train(itr, dataset, args, model, optimizer, criterion_cent_all, optimizer_ce
     logger.log_value('total_loss', total_loss, itr)
     print('Iteration: %d, Loss: %.3f' %(itr, total_loss.data.cpu().numpy()))
 
+    # 注意了模型的参数和center_loss的参数训练是不一样的
     optimizer.zero_grad()
     if total_loss > 0:
         total_loss.backward()
@@ -161,5 +162,7 @@ def train(itr, dataset, args, model, optimizer, criterion_cent_all, optimizer_ce
     # Update model params
     if total_loss > 0:
         optimizer.step()
+        
+        
 
 
