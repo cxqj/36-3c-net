@@ -15,9 +15,12 @@ torch.set_default_tensor_type('torch.cuda.FloatTensor')
 def test(itr, dataset, args, model, logger, device):
     
     done = False
-    instance_logits_stack = []
-    tcam_stack = []
-    labels_stack = []
+    # flow,rgb,tcam的综合分类结果
+    instance_logits_stack = []  #(2380,100)
+    # tcam的分类结果
+    tcam_stack = []  #(2380,T,100)
+    # label标签
+    labels_stack = []  #(2380,100)
     
     while not done:
         if dataset.currenttestidx % 100 ==0:
