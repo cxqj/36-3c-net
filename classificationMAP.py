@@ -9,6 +9,7 @@ def getAP(conf,labels): # (1,20),(1,20)
     fp = np.cumsum(fp).astype('float32'); tp = np.cumsum(tp).astype('float32')
     rec=tp/npos
     prec=tp/(fp+tp)
+    # 获取正样本所在的位置
     tmp = (labels[sortind]==1).astype('float32')
 
     return np.sum(tmp*prec)/npos  # 除以npos得到prec的均值
