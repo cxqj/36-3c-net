@@ -27,7 +27,7 @@ class CenterLoss(nn.Module):
         """
         Args:
             feature: feature matrix with shape (batch_size, feat_dim).
-            labels: ground truth labels with shape (batch_size).
+            labels: ground truth labels with shape (batch_size). labels中记录的实际上是每个类别的索引
         """
         batch_size = feature.size(0)  # B
         """
@@ -48,6 +48,7 @@ class CenterLoss(nn.Module):
         if labels.numel() > labels.size(0):
             mask = labels > 0
         else:
+            #(B,)-->(B,1)-->(B,num_classes)
             labels = labels.unsqueeze(1).expand(batch_size, self.num_classes)  # (B,20)
             mask = labels.eq(classes.expand(batch_size, self.num_classes).float()) # (B,20)
 
@@ -57,7 +58,7 @@ class CenterLoss(nn.Module):
             value *= labels[i][mask[i]]
             value = value.clamp(min=1e-12, max=1e+12) # for numerical stability clamp()函数可以限定dist内元素的最大最小范围
             dist.append(value)
-        dist = torch.cat(dist)
+        dist = torch.cat(dist)  #(B,)
         loss = dist.mean()
 
         return loss
